@@ -1,0 +1,44 @@
+version: '3.4'
+
+volumes:
+  clean-data: {}
+
+networks:
+  clean-net:
+
+services:
+    clean-api:
+      build:
+        context: ./
+        dockerfile: ./infra/api/Dockerfile
+      networks:
+         - clean-net
+      volumes:
+        - /etc/localtime:/etc/localtime:ro
+        - /etc/timezone:/etc/timezone:ro
+        - ./app/api:/home/clean
+        - ./infra/api/virtualHost.conf:/etc/apache2/sites-available/000-default.conf
+      depends_on:
+        - clean-config-database
+      ports:
+        - "4000:4000"
+      command: /bin/sh -c "/usr/local/bin/entrypoint.sh"     
+
+    clean-config-database:
+        image: postgres:10.0
+        restart: on-failure
+        networks:
+            - clean-net
+        volumes:
+            - clean-data:/var/lib/postgresql/data
+        environment:
+            POSTGRES_USER: clean
+            POSTGRES_PASSWORD: clean
+            POSTGRES_DB: clean-config
+        ports:
+            - "4002:5432"
+        healthcheck:
+            test: ["CMD", "pg_isready", "-U", "clean"]
+            interval: 30s
+            timeout: 30s
+            retries: 3
